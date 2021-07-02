@@ -1,0 +1,11 @@
+
+# notebook files
+*.ipynb_checkpoints
+*.ipynb
+
+# sqlite databases
+*.db
+
+
+
+

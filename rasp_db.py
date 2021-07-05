@@ -1,12 +1,8 @@
 
 
-import os
 import sqlite3
-from datetime import datetime
 
-
-
-def setup_db(testing=False):
+def setup_db(db_path):
     """
     args:
         * testing: boolean - this is a simple flag for testing the database table. Defaults to False.
@@ -16,16 +12,8 @@ def setup_db(testing=False):
         * cur (sqlite3 cursor object for the connection)
     """
 
-    # let's make sure this function is testable in the simplest way possible
-    if testing:
-        dbname = "rasp_test.db"
-        if dbname in os.listdir():
-            os.remove(dbname)
-    else:
-        dbname = "rasp.db"
-
     # connect to (or create) the database
-    con = sqlite3.connect(dbname)
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
 
     # DDL for creating the table
@@ -44,34 +32,4 @@ def setup_db(testing=False):
     con.execute(qry_create_table)
     con.commit()
 
-    if testing:
-        
-        raspi_timestamp = str(datetime.now())
-        row_to_insert = {
-            "hub_timestamp": "2021-06-07 17:00:02",
-            "raspi_timestamp": raspi_timestamp,
-            "sensor_name": "RV_bedroom_temp",
-            "measurement": "temperature",
-            "value": 81.3,
-            "units": "F"
-        }
-
-        cur.execute(
-            """
-            INSERT INTO rv_sensor ( 
-            hub_timestamp, raspi_timestamp, sensor_name, measurement, value, units)
-            values (:hub_timestamp, :raspi_timestamp, :sensor_name, :measurement, :value, :units)
-            """, row_to_insert)
-        con.commit()
-
-        print(cur.execute("SELECT * from rv_sensor;").fetchall())
     return con, cur
-
-
-
-if __name__ == "__main__":
-    con, cur = setup_db(testing=True)
-    print(type(con))
-    print(type(cur))
-
-

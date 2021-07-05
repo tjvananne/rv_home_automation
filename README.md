@@ -19,6 +19,7 @@ The goal is to receive that data on my Raspberri Pi, cache the data to a local s
 
 * `FastAPI` - I really like how similar this is to Flask, but it's async and fast out of the box, and the integration with `pydantic` for modeling your JSON input is super interesting to me
 * `Docker`, I simply don't have much experience deploying apps from a local docker registry, I want to try that (for back-end and front-end of cloud VM; likely won't do that for Raspberry Pi)
+* `unittest` - I generally just write a bunch of assert statements for testing, but I actually want to use the built-in test framework. Also may test out `pytest` which works with raw assert statements...
 
 
 ## Dependencies

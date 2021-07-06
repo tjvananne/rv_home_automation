@@ -29,47 +29,100 @@ from rasp_config import config as config
 
 
 # config:
-JSON_BUFFER_PATH = config["JSON_BUFFER_PATH"]
 SQLITE_PATH      = config["SQLITE_PATH"]
+JSON_BUFFER_PATH = config["JSON_BUFFER_PATH"]
 VM_URL           = config["VM_URL"]
 VM_USER          = config["VM_USER"]
 VM_PW            = config["VM_PW"]
 
 
-def make_buffer(buffer_path, current_record):
+class DataShipper:
     """
-    args:
-        - JSON_BUFFER_PATH (str): the path for where to check for buffered JSON data
-                                    to be sent to the cloud VM.
-        - current_record (dict):  the data that initiated this POST method function that
-                                    needs to be sent to cloud VM.
-
-    returns:
-        - deque object of one or more records (dicts) to be sent to cloud VM 
+    Sends data to a http(s) endpoint through POST method and JSON request body data. Config options for: 
+        - using a buffer on disk for potential connectivity issues
+    
+    Initialize class attributes:
+        - url (str): where to send the data
+        - username (str): in case we're using HTTP Basic Auth
+        - password (str): in case we're using HTTP Basic Auth
+        - buffer_path Optional(str): where to check for buffered data in case of connectivity issues
+    
+    Methods:
+        - send_data()
     """
+    def __init__(self, url: str, username=None, password=None, buffer_path=None):
+        self.url = url
+        self.username = username
+        self.password = password
+        self.buffer_path = buffer_path
     
-    if os.path.exists(buffer_path):
-        with open(buffer_path, "r") as f:
-            buff = deque(json.load(f))
-            buff.append(current_record)
-    else:
-        buff = deque([current_record])
-    
-    return buff
+    def _make_buffer(self, current_record):
+        """
+        args:
+            - current_record (dict):  the data we want to ship
+
+        returns:
+            - deque object of one or more records (dicts) to be sent to cloud VM 
+        """
+
+        # must short-circuit check if self.buffer_path is None, then check existence
+        if self.buffer_path and os.path.exists(self.buffer_path):
+            with open(self.buffer_path, "r") as f:
+                buff = json.load(f)
+                buff.append(current_record)
+        # if either are false, skip the read from disk and create from current record
+        else:
+            buff = [current_record]
+        
+        self.buffer_data = buff
+
+    def _write_buffer(self):
+
+        with open(self.buffer_path, "w") as f:
+            json.dump(self.buffer_data, f)
 
 
+    def send_data(self, current_record: dict):
 
+        
+        self._make_buffer(current_record=current_record)
+        
+        for i, _record in enumerate(self.buffer_data):
+            try:
 
+                if self.username and self.password:
+                    resp = requests.post(url=self.url, json=_record, auth=HTTPBasicAuth(self.username, self.password))
+                else:
+                    resp = requests.post(url=self.url, json=_record)
 
-def send_data(buffer, url, user, pw):
-    for _record in buffer:
-        resp = requests.post(url=url, json=list(_record), auth=HTTPBasicAuth(user, pw))
-        if resp.status_code != 200:
-            raise ConnectionError("Received something other than a 200 HTTP status code")
+                if resp.status_code != 200:
+                    raise ConnectionError("Received something other than a 200 HTTP status code")
+                else:
+                    # remove any records that may have successfully been sent to cloud
+                    self.buffer_data = self.buffer_data[i:]
+                    
+            except (ConnectionError, requests.exceptions.ConnectionError):
+
+                if not self.buffer_path:
+                    pass
+                else:
+                    if self.buffer_path:
+                        self._write_buffer()
+                return
+
+        # if we make it here without crash or exception, we've written all the data - delete buffer
+        if self.buffer_path: 
+            os.remove(self.buffer_path)
+        
+        return
 
 
 # handle database - should we really do this every time?
 con, cur = setup_db(db_path = SQLITE_PATH)
+
+# create data shipper instance
+ds = DataShipper(url=VM_URL, username=VM_USER, password=VM_PW, buffer_path=JSON_BUFFER_PATH)
+ 
 
 
 # defining my own pydantic model for what one of these records will look like coming from the Hubitat
@@ -121,18 +174,8 @@ async def process_data(record: SensorRecord):
     print(cur.execute("SELECT * from rv_sensor;").fetchall())
     con.close()
 
-    # "buff" has one or more records we need to pass to cloud VM
-    buff = make_buffer(JSON_BUFFER_PATH, row_to_insert)
-
-    try:
-        send_data(buff, url=VM_URL, user=VM_USER, pw=VM_PW)  #TODO: need to add certificate/key of cloud VM here
-        os.remove(JSON_BUFFER_PATH)
-    except ConnectionError:  # KeyError on os.environ[] or ConnectionError on requests.post()
-        with open(JSON_BUFFER_PATH, "w") as f:
-            json.dump(buff, f)
-
-    # should we be returning something?
-    # return  # no, this makes it a coroutine?
+    # send data to VM (buffer to disk if connectivity issue)
+    ds.send_data(row_to_insert)
     
 
 

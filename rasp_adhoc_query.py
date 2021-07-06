@@ -1,8 +1,65 @@
 
 
+
+
+
 import sys
-from raspi_api import process_data
+from multiprocessing import Process
+from fastapi import FastAPI, Request
+import uvicorn
+import requests
+from raspi_api import DataShipper
 from datetime import datetime
+
+
+
+# test starts here...
+app = FastAPI()
+ds = DataShipper(url="http://127.0.0.1:9999")
+
+
+# using just the generic "Request" object, you can receive any generic JSON data passed to the endpoint.
+# https://stackoverflow.com/questions/64379089/fastapi-how-to-read-body-as-any-valid-json
+@app.post("/")
+async def root(data: Request):
+    return await data.json() 
+
+
+api_proc = Process(target=uvicorn.run, kwargs={"app":"rasp_adhoc_query:app", "port":9999})
+# uvicorn.run(app="rasp_adhoc_query:app", port=9999)
+api_proc.start()
+
+
+raspi_timestamp = str(datetime.now())
+row_to_insert = {
+    "hub_timestamp": raspi_timestamp,
+    "raspi_timestamp": raspi_timestamp,
+    "sensor_name": "RV_bedroom_temp",
+    "measurement": "temp",
+    "value": "77.8",
+    "units": "F"
+}
+
+ds.send_data(row_to_insert)
+
+# # generic test...
+# resp = requests.post("http://127.0.0.1:9999", json={"my":"data"})
+# resp.status_code
+# resp.text
+
+
+2 + 2
+
+sys.exit(0)
+
+
+
+# testing my own class
+
+import sys
+from raspi_api import DataShipper
+from datetime import datetime
+from rasp_config import config
 
 raspi_timestamp = str(datetime.now())
 row_to_insert = {
@@ -16,8 +73,18 @@ row_to_insert = {
     ,"source": "DEVICE"
 }
 
-async def mytest():
-    k = await(process_data(row_to_insert))
+
+ds = DataShipper(
+    # url=config["VM_URL"],
+    url="https://not-a-real-website-at-all.com",
+    username=config["VM_USER"],
+    password=config["VM_PW"],
+    buffer_path=config["JSON_BUFFER_PATH"]
+    )
+
+
+ds.send_data(row_to_insert)
+
 
 sys.exit(0)
 
@@ -77,7 +144,7 @@ x = {
 }
 
 json.dumps(x)
-json.dumps([x])
+json.dumps([x])  # I want this, should be a list regardless of if 1 or more records
 
 
 from collections import deque
@@ -91,6 +158,8 @@ q.append(x2)
 print(q)
 
 q[0]
+
+list(q)
 
 # you can convert deque of two dict-like objects to list then JSON string
 mystrj = json.dumps(list(q))

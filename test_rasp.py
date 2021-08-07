@@ -3,9 +3,9 @@
 
 # easy way to set up tests the same way they look in prod
 from rasp_config import config_test as config
-from raspi_api import DataShipper
+from raspi_api import DataHandler
 
-ds = DataShipper()
+ds = DataHandler()
 
 
 import unittest

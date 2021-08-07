@@ -68,3 +68,86 @@ so what I'm trying to do is have a deque object, iterate through it, then if tha
 
 * I need to really think about what nginx is doing vs FastAPI. The cloud VM only has one public IP address. FastAPI and Nginx can't both be listening on the same port (I don't think... test this?). I can listen on Nginx and forward stuff to FastAPI, but that's probably only for client-facing dynamic stuff. What I'm trying to do is just backend data collection, so I can just send it to whatever port and it doesn't atter at all. The reason I bring all of this up is because I'm trying to think about where to put my HTTP Basic Auth logic. I just realized that I don't actually need nginx to do this. There's a way to use [HTTP Basic Auth within FastAPI itself](https://fastapi.tiangolo.com/advanced/security/http-basic-auth/)
 
+
+#### Hubitat and sensor specific questions:
+
+- Aqara temp sensor:
+    - How often does it report?
+        - https://community.hubitat.com/t/xiaomi-aqara-zigbee-device-drivers-possibly-may-no-longer-be-maintained/631/930
+
+
+#### Near realtime visualization options:
+
+Building real time data visualization of my temperature sensor:
+
+Concept of the day: WEBHOOKS
+
+API: when you need to pull data from a resource
+WEBHOOKS: when you need data pushed to you when an event happens
+- aka: "reverse API"
+
+I think we can combine HTTP POST / webhooks / websockets to create some interesting near-real-time patterns for displaying the temperature data from my RV.
+
+Potential resources:
+
+**Python tornado websockets with d3.js visualization - interesting...**
+- https://medium.com/@benjaminmbrown/real-time-data-visualization-with-d3-crossfilter-and-websockets-in-python-tutorial-dba5255e7f0e
+
+**this SO post makes leads me to some interesting thoughts...**
+- https://stackoverflow.com/questions/63099518/sending-a-websocket-message-from-a-post-request-handler-in-express
+-- I need to learn more about web hooks
+-- I think a web hook is an API that can convert a POST http req to a websocket.send()?
+--- if that isn't what it is, then I want what I said lol
+
+**let's figure out exactly what a web hook is:**
+**Clearly there's some SEO competition for this question....**
+- https://sendgrid.com/blog/whats-webhook/
+-- "A webhook (also called a web callback or HTTP push API) is a way for an app to provide other applications with real-time information. A webhook delivers data to other applications as it happens, meaning you get data immediately. Unlike typical APIs where you would need to poll for data very frequently in order to get it real-time. This makes webhooks much more efficient for both provider and consumer. The only drawback to webhooks is the difficulty of initially setting them up."
+- https://www.twilio.com/docs/glossary/what-is-a-webhook
+- https://zapier.com/blog/what-are-webhooks/
+
+
+**ok so webhooks are sick; this will be super helpful for testing:**
+- https://webhook.site
+
+
+so.. if I tell my hubitat device to push to www.taylorvananne.com:9000, I can have an HTTP server listening for POST requests there. I can then take that JSON associated with that POST command, and send it to a websocket at localhost:9001 (keep in mind, we're already on the www.taylorvananne.com server, so it's localhost now). THEN I can set up d3.js visualizations to update based on the data coming in from the websocket.
+
+
+
+**testing maker API**
+**I only have this set up for local LAN access, no remote/cloud**
+
+**Event History Template**
+http://192.168.8.107/apps/api/6/devices/[Device ID]/events?access_token=0d38a5e8-f4d8-4bed-a792-619615659af9
+
+**Event History for aqara temp / humidity sensor**
+http://192.168.8.107/apps/api/6/devices/1/events?access_token=0d38a5e8-f4d8-4bed-a792-619615659af9
+
+**NICE, that works!**
+
+So now I've got this working to where I'll be able to poll (GET) my hubitat for changes from the aqara temperature sensor. That's great and all, but it would be way more slick to instead set up some logic to POST from my hubitat TO my raspberry pi device whenever something changes. Ideally, it would only be whenever the TEMP changes. So I'm thinking I need "Apps Code" for this. 
+
+But, before I go about writing code for this. In the maker API, there is a section that says "URL to send device events to by POST" - so that sounds super interesting...
+
+I'm thinking I could:
+
+1) set up raspberry pi with static IP address
+2) set up a simple http server listening on that IP address / port combination
+3) pass that data to my cloud (linode?) server
+4) maybe that cloud linode server is running some websocket logic where I can update the charts/graphs in real time? Like have a tile for current temp, but then show the history somewhere as well? Just a rolling history of like the past 10-20 readings?
+
+**Other hubitat maker api questions...**
+Can I control which devices send data by POST?
+
+Maybe I could set up my own pub/sub type of deal where I route the data to different places based on it's "label" / "name" combination (the name I gave the sensor?):
+* label = name I gave to the sensor
+* name = ["humidity"|"temperature"]
+
+
+I don't think it's feasible or worth-while to run kafka on my pi. But maybe there's like a super slim version of Kafka or something I could run instead? I think I could easily do what I need in Python, but I'd rather it be in something ultra efficient.
+Rust? Go?
+
+
+
+

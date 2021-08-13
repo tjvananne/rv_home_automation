@@ -6,6 +6,18 @@ The goal is to receive that data on my Raspberri Pi, cache the data to a local s
 
 ---
 
+## remaining TODO items:
+
+1. ~~set up deployment from local machine to raspberry pi on LAN~~
+2. ~~set up env variables on pi on LAN~~
+3. troubleshoot issue with FastAPI acting as a reverse API
+   1. github.com/tiangolo/fastapi/issues/1788
+
+
+---
+
+
+
 ## components of the project
 
 * `rasp*` files refer to logic that will be hosted on my LAN raspberry pi
@@ -149,5 +161,12 @@ I don't think it's feasible or worth-while to run kafka on my pi. But maybe ther
 Rust? Go?
 
 
+
+# Retrospective:
+
+
+I began development without truly knowing what the JSON payloads would look like from the hubitat to the raspberry pi. This was a big issue. On the hubitat interface, you can see what past events have looked like (in JSON form). I figured this would be the exact same format as what would be sent by the hubitat maker API to my raspberry pi. It's actually quite a bit different (raw json doesn't have a timestamp from hubitat, field names are very different, etc.).
+
+The first step I should have taken was to set up a generic FastAPI end point that can accept arbitrary JSON data posted to it, then let it run for a few hours and collect what the sensor data looks like. And THEN I should have started developing around that as a starting point.
 
 

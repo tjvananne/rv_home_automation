@@ -1,6 +1,0 @@
-Hubitat:
-
-- Aqara temp sensor:
--- How often does it report?
---- https://community.hubitat.com/t/xiaomi-aqara-zigbee-device-drivers-possibly-may-no-longer-be-maintained/631/930
-

@@ -81,7 +81,7 @@ async def process_data(record: SensorRecord,
 
     # TODO: think about how to process relative timestamps?
     # parse / build row to be inserted into sqlite and sent to cloud vm
-    vm_timestamp = str(datetime.now())
+    vm_timestamp = str(datetime.utcnow())
     row_to_insert = {
         "vm_timestamp": vm_timestamp,  
         "raspi_timestamp": record.raspi_timestamp,
@@ -104,6 +104,9 @@ async def process_data(record: SensorRecord,
     # con.close()
 
 
+@app.post("/get-sensor-data/")
+async def get_data():
+    pass
 
 
 if __name__ == "__main__":

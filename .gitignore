@@ -12,3 +12,7 @@ __pychache__/*
 __pycache__
 ./__pycache__
 ./__pycache__/*
+
+
+# just keep package-lock.json, not modules themselves...
+node_modules
